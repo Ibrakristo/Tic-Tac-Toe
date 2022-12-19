@@ -21,23 +21,20 @@ let playerA = Player();
 let playerB = Player();
 
 let gameBoard = (function () {
-  let divs = document.querySelectorAll(".section");
-  let gameboard = new Array(9);
+  let gm = {};
+   gm.divs = document.querySelectorAll(".section");
+   gm.gameboard = new Array(9);
 
-  let render = function () {
-    for (let i = 0; i < gameboard.length; i++) {
-      if (gameboard[i] == undefined) {
-        divs[i].innerText = "";
+   gm.render = function () {
+    for (let i = 0; i < this.gameboard.length; i++) {
+      if (this.gameboard[i] == undefined) {
+        this.divs[i].innerText = "";
         continue;
       }
-      divs[i].innerText = gameboard[i];
+      this.divs[i].innerText = this.gameboard[i];
     }
   };
-  return {
-    divs,
-    gameboard,
-    render,
-  };
+  return gm;
 })();
 let game = (function () {
   let _turn = 0;
@@ -102,18 +99,16 @@ let game = (function () {
     let turn = _turn ? playerB : playerA;
     gameBoard.gameboard[section] = turn.letter;
     gameBoard.render();
-    _check(turn, section);
+    _check(turn);
     if (_mode == 0) {
       _turn = _turn ? 0 : 1;
     }
-    if (_mode == 1) {
-        
-      playingAI();
+    if (_mode == 1 && !_over) {
+      _playingAI();
     }
   };
-  function _check(turn, section) {
+  function _check(turn) {
     let gameboard = gameBoard.gameboard;
-    section = Number(section);
     condition = false;
     for (let i = 0; i <= gameboard.length; i += 1) {
       if (gameboard[i] == undefined) continue;
@@ -176,8 +171,8 @@ let game = (function () {
       return;
     }
   }
-  function playingAI() {
-    if(_over) return;
+  function _playingBot() {
+    if (_over) return;
     let gameboard = gameBoard.gameboard;
     while (true) {
       let rand = (Math.random() * 8).toFixed(0);
@@ -187,6 +182,120 @@ let game = (function () {
         break;
       }
     }
+  }
+  function _playingAI() {
+    let gameboard = [...(gameBoard.gameboard)];
+    gameBoard.gameboard  = _AI(gameboard, playerB, -1, +1, true, 1);
+    _check(playerB);
+     gameBoard.render();
+  }
+
+  function _AI(position, turn, alpha, beta, maximizingPlayer, number) {
+    let test = _checkForAI(position, turn);
+    if (test != null) {
+      return test;
+    }
+
+    if (maximizingPlayer) {
+      let value = -1;
+      let s;
+      for (let x of _determinePosition(position, turn)) {
+        let r = _AI(x,playerA,alpha,beta,false,number+1);
+        if(r> value){
+          value = r;
+          if(number ==1){
+          s = x;
+          }
+        }
+        alpha = Math.max(alpha, value);
+
+        if (beta <= alpha) {
+          break;
+        }
+      }
+      if(number == 1){
+        return s;
+      }
+      return value;
+    } else {
+      let value = 1;
+      for (let x of _determinePosition(position, turn)) {
+        value = Math.min(value, _AI(x, playerB,alpha,beta, true, number + 1));
+        beta = Math.min(beta, value);
+        if (beta <= alpha) {
+          break;
+        }
+      }
+      return value;
+    }
+  }
+
+  function _determinePosition(position, turn) {
+    let arrayOfPositions = [];
+    for (let i = 0; i < 9; i++) {
+      let pos = [...position];
+      if (pos[i] == undefined) {
+        pos[i] = turn.letter;
+        arrayOfPositions.push(pos);
+      }
+    }
+    return arrayOfPositions;
+  }
+
+  function _checkForAI(position, turn) {
+    let gameboard = position;
+    condition = false;
+    for (let i = 0; i <= gameboard.length; i += 1) {
+      if (gameboard[i] == undefined) continue;
+      if (i % 3 == 0) {
+        if (
+          gameboard[i] == gameboard[i + 1] &&
+          gameboard[i + 1] == gameboard[i + 2]
+        ) {
+          condition = true;
+        }
+      }
+      if (i == 0) {
+        if (
+          gameboard[i] == gameboard[i + 4] &&
+          gameboard[i] == gameboard[i + 8]
+        ) {
+          condition = true;
+          break;
+        }
+      }
+      if (i == 6) {
+        if (
+          gameboard[i] == gameboard[i - 2] &&
+          gameboard[i] == gameboard[i - 4]
+        ) {
+          condition = true;
+          break;
+        }
+      }
+      if (i < 3) {
+        if (
+          gameboard[i] == gameboard[i + 3] &&
+          gameboard[i] == gameboard[i + 6]
+        ) {
+          condition = true;
+        }
+      }
+    }
+    if (condition) {
+      if (turn == playerA) return 1;
+      else return -1;
+    }
+    let every = true;
+    for (let x of gameboard) {
+      if (x == undefined) {
+        every = false;
+      }
+    }
+    if (every) {
+      return 0;
+    }
+    return null;
   }
   for (let div of gameBoard.divs) {
     div.addEventListener("click", _addMark);
